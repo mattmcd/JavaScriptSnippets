@@ -1,16 +1,20 @@
-function make_repl(node, evaluator) {
+function make_repl(node, make_evaluator) {
   var cmd_prompt = '>>';
   var entry_start = 0;
-  var my_evaluator = evaluator;
+  var my_evaluator;
 
-  if (typeof my_evaluator === 'undefined') {
+  if (typeof make_evaluator === 'undefined') {
     my_evaluator = {
-      evaluate_input : echo_evaluator
+      evaluate_input : function(str) { return str + '\n';}, 
+      usage : function() {
+        return '| Echo evaluator |'; }
     };
+  } else {
+    my_evaluator = make_evaluator();
   }
 
-  function echo_evaluator(str) {
-    return str + '\n';
+  function print_intro() {
+    node.value += my_evaluator.usage().trim() + '\n';
   }
 
   function print_prompt() {
@@ -40,7 +44,7 @@ function make_repl(node, evaluator) {
     var startInd = node.selectionStart - 1;
     var endInd = node.selectionEnd;
     var c = cmd.slice(startInd, endInd);
-    console.log('Read a character: ' + c);
+    // console.log('Read a character: ' + c);
     if (startInd < entry_start) {
       remove_char(startInd, endInd);
       move_selection(node.value.length);
@@ -61,6 +65,8 @@ function make_repl(node, evaluator) {
   }
 
   node.oninput = read_char;
+  node.value = '';
+  print_intro();
   print_prompt();
   return {readChar: read_char};
 }
@@ -69,7 +75,11 @@ function make_repl(node, evaluator) {
 function init() {
   console.log('Loaded');
   var cmdline = document.getElementById('cmdline');
-  // cmdline.oninput = readChar;
-  var repl = make_repl(cmdline);
+  var repl;
+  if (typeof make_evaluator === 'undefined') {
+    repl = make_repl(cmdline);
+  } else {
+    repl = make_repl(cmdline, make_evaluator);
+  }
 }
 
