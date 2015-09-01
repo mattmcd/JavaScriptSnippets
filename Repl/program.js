@@ -52,10 +52,6 @@ function make_repl(node, evaluator) {
   function handle_char(c) {
     var startInd = node.selectionStart - 1;
     var endInd = node.selectionEnd;
-    // Example character dependent processing: ignore 'd'
-    if (c === 'd') {
-      remove_char(startInd, endInd);
-    }
     if (c === '\n') {
       var in_str = node.value.slice(entry_start, endInd);
       var result = my_evaluator.evaluate_input(in_str);
