@@ -5,13 +5,14 @@
   <TITLE>Blank Template</TITLE>
   <script type="text/javascript" src="video.js"></script>
 </HEAD>
-<BODY>
+<BODY onLoad="pageDidLoad()">
 <!-- Insert elements here -->
 <p>
   <select id="camera" hidden></select>
 </p>
 <div>
     <video id="live" width="512" height="384" hidden autoplay></video>
+    <canvas id="display" width="512" height="384"></canvas>
 </div>
 </BODY>
 </HTML>

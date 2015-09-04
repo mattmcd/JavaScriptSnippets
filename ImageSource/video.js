@@ -1,10 +1,3 @@
-// Global handle to module
-var ImageProcModule = null;
-
-// Global status message
-var statusText = 'NO-STATUS';
-var lastClick = null;
-
 var isRunning = false;
 var isReadyToReceive = false;
 
@@ -65,29 +58,11 @@ function setVideoInput() {
 
 function pageDidLoad() {
   getVideoSources();
-  var listener = document.getElementById("listener");
-  listener.addEventListener("load", moduleDidLoad, true );
-  listener.addEventListener("message", handleMessage, true );
-  if ( ImageProcModule == null ) {
-    updateStatus( 'LOADING...' );
-  } else {
-    updateStatus();
-  }
-
-  // Set up inteface
-  var go = document.getElementById("go");
-  go.addEventListener("onclick", sendImage );
 }
 
 function draw(v,c) {
   c.drawImage(v, 0, 0);
   setTimeout( draw, samplePeriod, v, c);
-}
-
-function loadResource() {
-  var cmd = { cmd: "load",  
-    url: "smiley_col.bmp" };
-  ImageProcModule.postMessage( cmd );
 }
 
 function getImageData( id ) {
@@ -100,65 +75,6 @@ function getImageData( id ) {
   var pixels = ctx.getImageData(0, 0, width, height);
   var imData = { width: width, height: height, data: pixels.data.buffer };
   return imData;
-}
-
-function sendImage() {
-  if ( isRunning && isReadyToReceive ) {
-    // Get the current frame from canvas and send to NaCl
-    // drawImage( pixels );
-    var imData = getImageData( "display" );
-
-    var theCommand = "process"; //"echo"; // test, process
-    var selectedProcessor = getSelectedProcessor();
-    var cmd = { cmd: theCommand,  
-      width: imData.width, 
-      height: imData.height, 
-      data: imData.data, 
-      processor: selectedProcessor };
-    if ( selectedProcessor === "Smiley!" ) {
-      cmd.args = getImageData("smiley_canvas");
-    }
-    startTime = performance.now();
-    ImageProcModule.postMessage( cmd );
-    isReadyToReceive = false; // Don't send any more frames until ready
-  } else if (isRunning ) {
-    // Do nothing
-  } else { 
-    updateStatus( 'Stopped' );
-  }
-  setTimeout( sendImage, samplePeriod );
-}
-
-function drawImage(pixels){
-    var processed = document.getElementById("processed");
-    var ctx = processed.getContext( "2d" );
-    var imData = ctx.getImageData(0,0,processed.width,processed.height);
-    var buf8 = new Uint8ClampedArray( pixels );
-    imData.data.set( buf8 );
-    ctx.putImageData( imData, 0, 0);
-}
-
-function moduleDidLoad() {
-  ImageProcModule = document.getElementById( "image_proc" );
-  updateStatus( "OK" );
-  // Load image resource
-  // loadResource();
-  var cv = document.getElementById( "smiley_canvas" );
-  var ctx = cv.getContext( "2d" );
-  var smiley = document.getElementById( "smiley" );
-  ctx.drawImage(smiley, 0, 0);
-  imageData = ctx.getImageData( 0, 0, smiley.width, smiley.height);
-
-  var go = document.getElementById( "go" );
-  var videoSelect = document.querySelector( "select#camera" );
-  go.onclick = startSending;
-  var stop = document.getElementById( "stop" );
-  stop.onclick = stopSending;
-  stop.disabled = true;
-
-  videoSelect.hidden = false;
-  stop.hidden = false;
-  go.hidden = false;
 }
 
 function startSending() {
@@ -178,65 +94,4 @@ function stopSending() {
   go.disabled = false;
   var stop = document.getElementById( "stop" );
   stop.disabled = true;
-}
-
-function handleMessage(message_event) {
-  var res = message_event.data;
-  if ( res.Type == "version" ) {
-    updateStatus( res.Version );
-    updateProcessors( res.Processors );
-  }
-  if ( res.Type == "completed" ) {
-    if ( res.Data ) {
-      // updateStatus( "Received array buffer");
-      // Display processed image    
-      endTime = performance.now();
-      averageFramePeriod = (1-ewmaSmooth)*averageFramePeriod + ewmaSmooth*(endTime-startTime);
-      updateStatus( 'Frame rate is ' + (averageFramePeriod).toFixed(1) + 'ms per frame' );
-      drawImage( res.Data );
-      isReadyToReceive = true;
-    } else {
-      updateStatus( "Received something unexpected");
-    }
-
-    // Display processed image    
-    //drawImage( res.Data );
-  }
-  if ( res.Type == "status" ) {
-    // updateStatus( res.Message ); 
-  }
-  if ( res.Type == "resource_loaded" ) {
-    // Load image from server
-    updateStatus( res.Message ); 
-    imageData = res.Data;
-  }
-}
-
-function updateStatus( optMessage ) {
-  if (optMessage)
-    statusText = optMessage;
-  var statusField = document.getElementById("statusField");
-  if (statusField) {
-    statusField.innerHTML = " : " + statusText;
-  }
-}
-
-function updateProcessors( processorNames ) {
-  var processors = document.getElementById( "processor" );
-  for (i=0; i<processorNames.length; i++ ) {
-    var option = document.createElement("option");
-    option.text = processorNames[i];
-    processors.add( option );
-  }
-  processors.disabled = false;
-  processors.hidden = false;
-}
-
-function getSelectedProcessor( ) {
-  var processors = document.getElementById( "processor" );
-  processor = processors[ processors.selectedIndex ].text;
-  if ( !processor ) {
-    processor = "Id";
-  }
-  return processor;
 }
