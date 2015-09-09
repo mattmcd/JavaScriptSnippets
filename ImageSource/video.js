@@ -11,7 +11,7 @@ function make_image_source(useVideo, fileList) {
       function( srcInfo ) {
         videoSourceId = srcInfo
           .filter( function(s) { return s.kind == "video"; } );
-        selectedSource = videoSourceId[0];
+        selectedSource = videoSourceId[0].id;
         if (typeof cbFun !== 'undefined') {
           cbFun(videoSourceId);
         }
@@ -20,7 +20,6 @@ function make_image_source(useVideo, fileList) {
   }
 
   function setVideoInput(cbFun) {
-
     navigator.webkitGetUserMedia(
       {video: { optional:[{sourceId : selectedSource}] }, audio:false}, 
       cbFun, 
@@ -33,6 +32,7 @@ function make_image_source(useVideo, fileList) {
     init : getVideoSources,
     getSourceIds : function(){ return videoSourceId; },
     setSource : function(srcId) { selectedSource = srcId;},
+    getSource : function() { return selectedSource;},
     setVideoInput: setVideoInput
   }
 }
@@ -42,6 +42,8 @@ function make_image_source_view(image_source) {
   var videoSelect;
   var video;
   var display;
+  var context; 
+
   var src = image_source;
   var samplePeriod = 40; // ms
   var averageFramePeriod = samplePeriod;
@@ -51,7 +53,8 @@ function make_image_source_view(image_source) {
   var isReadyToReceive = false;
   
   function setVideoCb () {
-    console.log("camera changed");
+    console.log("camera changed from " + 
+      src.getSource() + " to " + videoSelect.value);
     src.setSource(videoSelect.value);
     src.setVideoInput(drawCb);
   }
@@ -62,16 +65,15 @@ function make_image_source_view(image_source) {
   }
 
   function start() {
-    var context = display.getContext("2d");
     isRunning = true;
-    draw( video, context);
+    draw();
   }
   
-  function draw(v,c) {
+  function draw() {
     if (!isRunning) return; // Early exit
     // Draw from video v to canvas context c
-    c.drawImage(v, 0, 0);
-    setTimeout( draw, samplePeriod, v, c);
+    context.drawImage(video, 0, 0);
+    setTimeout( draw, samplePeriod, video, context);
   }
   
   function setVideoSelectList(videoSourceId) {
@@ -82,7 +84,7 @@ function make_image_source_view(image_source) {
             option.value= s.id;
             videoSelect.appendChild( option );
             return s.id; } );
-    src.setVideoInput(drawCb);
+    setVideoCb();
     videoSelect.onchange = setVideoCb;
     videoSelect.hidden = false;
   }
@@ -99,11 +101,12 @@ function make_image_source_view(image_source) {
     return imData;
   }
  
-  function initControls() {
+  function initControls(videoId, canvasId, selectId) {
   // DOM Nodes for controls
-    videoSelect = document.querySelector("select#camera");
-    video = document.getElementById("live");
-    display = document.getElementById("display");
+    video = document.getElementById( videoId );
+    display = document.getElementById( canvasId );
+    videoSelect = document.getElementById( selectId );
+    context = display.getContext("2d");
     src.init(setVideoSelectList);
   }
 
@@ -113,15 +116,20 @@ function make_image_source_view(image_source) {
     start: start,
     setSamplePeriod: function (period) { 
       samplePeriod = Math.max(period,0); },
-    getSamplePeriod: function () { return samplePeriod; }
+    getSamplePeriod: function () { return samplePeriod; },
+    isRunning: function() { return isRunning; }
   }
 
 }
 
 var view;
+var view2;
 
 function pageDidLoad() {
   var image_source = make_image_source(true);
   view = make_image_source_view(image_source);
-  view.init();
+  view.init("live", "display", "camera");
+  // Demo: two views
+  view2 = make_image_source_view(image_source);
+  view2.init("live2", "display2", "camera2");
 }
