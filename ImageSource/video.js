@@ -91,9 +91,15 @@ function make_image_source_view(image_source) {
   
   function getImageData( id ) {
     // Get image data from specified canvas
-    var ctx = display.getContext( "2d" );
-    var height = display.height;
-    var width = display.width;
+    var cv; 
+    if (typeof id === 'undefined') {
+      cv = display;
+    } else {
+      cv = document.getElementById( id );
+    }
+    var ctx = cv.getContext( "2d" );
+    var height = cv.height;
+    var width = cv.width;
     var nBytes = height * width * 4; 
     var pixels = ctx.getImageData(0, 0, width, height);
     var imData = { width: width, height: height, 
@@ -117,6 +123,7 @@ function make_image_source_view(image_source) {
     setSamplePeriod: function (period) { 
       samplePeriod = Math.max(period,0); },
     getSamplePeriod: function () { return samplePeriod; },
+    getImageData: getImageData, 
     isRunning: function() { return isRunning; }
   }
 
