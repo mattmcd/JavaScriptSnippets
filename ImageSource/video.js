@@ -1,13 +1,4 @@
 function make_image_source(useVideo, fileList) {
-  var isRunning = false;
-  var isReadyToReceive = false;
-
-  var samplePeriod = 40; // ms
-
-  var startTime;
-  var endTime;
-  var averageFramePeriod = samplePeriod;
-  var ewmaSmooth = 0.3;
 
   var videoSourceId;
   var selectedSource;
@@ -28,26 +19,16 @@ function make_image_source(useVideo, fileList) {
     );
   }
 
-  function setVideoInput(video, display) {
-    var context = display.getContext("2d");
+  function setVideoInput(cbFun) {
 
     navigator.webkitGetUserMedia(
       {video: { optional:[{sourceId : selectedSource}] }, audio:false}, 
-      function (stream) {
-        video.src = window.URL.createObjectURL(stream);
-        draw( video, context);
-      },
+      cbFun, 
       function (err) {
         console.log("Unable to get media stream:" + err.Code );
       });
   }
   
-  function draw(v,c) {
-    // Draw from video v to canvas context c
-    c.drawImage(v, 0, 0);
-    setTimeout( draw, samplePeriod, v, c);
-  }
-
   return {
     init : getVideoSources,
     getSourceIds : function(){ return videoSourceId; },
@@ -62,11 +43,35 @@ function make_image_source_view(image_source) {
   var video;
   var display;
   var src = image_source;
+  var samplePeriod = 40; // ms
+  var averageFramePeriod = samplePeriod;
+  var ewmaSmooth = 0.3;
+  
+  var isRunning = false;
+  var isReadyToReceive = false;
   
   function setVideoCb () {
     console.log("camera changed");
     src.setSource(videoSelect.value);
-    src.setVideoInput(video, display);
+    src.setVideoInput(drawCb);
+  }
+  
+  function drawCb(stream) {
+    video.src = window.URL.createObjectURL(stream);
+    start();
+  }
+
+  function start() {
+    var context = display.getContext("2d");
+    isRunning = true;
+    draw( video, context);
+  }
+  
+  function draw(v,c) {
+    if (!isRunning) return; // Early exit
+    // Draw from video v to canvas context c
+    c.drawImage(v, 0, 0);
+    setTimeout( draw, samplePeriod, v, c);
   }
   
   function setVideoSelectList(videoSourceId) {
@@ -77,7 +82,7 @@ function make_image_source_view(image_source) {
             option.value= s.id;
             videoSelect.appendChild( option );
             return s.id; } );
-    src.setVideoInput(video, display);
+    src.setVideoInput(drawCb);
     videoSelect.onchange = setVideoCb;
     videoSelect.hidden = false;
   }
@@ -93,24 +98,30 @@ function make_image_source_view(image_source) {
       data: pixels.data.buffer };
     return imData;
   }
-  
+ 
   function initControls() {
   // DOM Nodes for controls
     videoSelect = document.querySelector("select#camera");
     video = document.getElementById("live");
     display = document.getElementById("display");
     src.init(setVideoSelectList);
-    src.setVideoInput(video, display);
   }
 
   return {
-    init: initControls
+    init: initControls,
+    stop: function() { isRunning = false; },
+    start: start,
+    setSamplePeriod: function (period) { 
+      samplePeriod = Math.max(period,0); },
+    getSamplePeriod: function () { return samplePeriod; }
   }
 
 }
 
+var view;
+
 function pageDidLoad() {
   var image_source = make_image_source(true);
-  var view = make_image_source_view(image_source);
+  view = make_image_source_view(image_source);
   view.init();
 }
